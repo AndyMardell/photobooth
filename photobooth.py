@@ -2,12 +2,6 @@
 import RPi.GPIO as GPIO
 import os
 import time
-from email.MIMEMultipart import MIMEMultipart
-from email.MIMEText import MIMEText
-from email.MIMEImage import MIMEImage
-from email.MIMEBase import MIMEBase
-from email import Encoders
-import smtplib
 import socket
 
 # Hardware
@@ -33,13 +27,10 @@ serverHost = 'user@server'
 serverPort = '22'
 serverFilePath = '/path/to/save/all/photos/to/'
 serverSlideshowPath = '/path/to/save/tiles/to/'
-gmail_username = 'user@gmail.com'
-gmail_password = 'plaintextpasswordyay'
 
 # Options
 createTile = True
 createGif = True
-uploadToTumblr = False # createGif must be set to True
 uploadToServer = True
 removePhotosFromPi = True
 
@@ -141,44 +132,6 @@ def animatePhotos(session):
     os.system(animate)
 
 
-# Function: Upload to Tumblr
-def tumblr(session):
-
-    # Notify
-    print("Uploading to Tumblr")
-
-    # Check internet connection
-    while connected():
-    	try:
-
-            # Start email stuff for Tumblr upload
-            msg = MIMEMultipart()
-            msg['Subject'] = 'Photo Booth '+session
-            msg['From'] = 'amardell1990@gmail.com'
-            msg['To'] = 'borzawh3vokdy@tumblr.com'
-
-            file_path = os.path.join(photosPath+session+'-animated.gif')
-            fp = open(file_path, 'rb')
-            part = MIMEBase('image', 'gif')
-            part.set_payload( fp.read() )
-            Encoders.encode_base64(part)
-            part.add_header('Content-Disposition', 'attachment; filename="%s"' % os.path.basename(file_path))
-            fp.close()
-            msg.attach(part)
-
-            server = smtplib.SMTP('smtp.gmail.com:587')
-            server.starttls()
-            server.login(gmail_username, gmail_password)
-            server.sendmail(msg['From'], msg['To'], msg.as_string())
-            server.quit()
-
-            break
-
-    	except ValueError:
-
-            print "No Internetz"
-
-
 # Function: Upload Files to Home Server
 def serverUpload(session):
 
@@ -220,10 +173,6 @@ while True:
         # Optional: Create GIF
         if (createGif):
             animatePhotos(currentTime)
-
-        # Optional: Upload to Tumblr
-        if (uploadToTumblr):
-            tumblr(currentTime)
 
         # Optional: Upload to Server
         if (uploadToServer):
