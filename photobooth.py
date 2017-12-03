@@ -160,6 +160,9 @@ while True:
     # Wait for Button Press
     if (GPIO.input(buttonPin) == False):
 
+        # Notify that button has been pressed
+        print("Button has been pressed")
+
         # Get Current Time
         currentTime = time.strftime('%y%m%d-%H%M%S') # '20151227-211345'
 
