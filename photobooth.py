@@ -1,8 +1,12 @@
 # Imports
 import RPi.GPIO as GPIO
+import sys
 import os
 import time
 import socket
+import dropbox
+from dropbox.files import WriteMode
+from dropbox.exceptions import ApiError, AuthError
 
 # Hardware
 buttonPin = 27
@@ -27,11 +31,13 @@ serverHost = 'user@server'
 serverPort = '22'
 serverFilePath = '/path/to/save/all/photos/to/'
 serverSlideshowPath = '/path/to/save/tiles/to/'
+TOKEN = 'accessToken'
 
 # Options
 createTile = True
 createGif = True
 uploadToServer = True
+uploadToDropbox = True
 removePhotosFromPi = True
 
 
@@ -110,7 +116,7 @@ def takePhotos(session):
         shotNumber += 1
 
 
-# Function: Combine Photos into Grid
+# Function: Combine Photos into Tile
 def tilePhotos(session):
 
     # Set Combine Command
@@ -141,6 +147,33 @@ def serverUpload(session):
     os.system('scp -P '+serverPort+' '+photosPath+session+'-* '+serverHost+':'+serverFilePath)
     # Re-upload Tiled for Slideshow
     os.system('scp -P '+serverPort+' '+photosPath+session+'-tile.jpg '+serverHost+':'+serverSlideshowPath)
+
+
+# Function: Upload Files to Dropbox
+def dropboxUpload(session):
+
+    # Add path and -tile.jpg to the filename ready to upload the single tile
+    filename = +photosPath+session + '-tile.jpg'
+
+    with open(filename, 'rb') as f:
+
+        print("Uploading to Dropbox")
+
+        try:
+            # Use WriteMode=overwrite to overwrite file if there are conflicts
+            dbx.files_upload(f.read(), "/" + filename, mode=WriteMode('overwrite'))
+        except ApiError as err:
+            # This checks for the specific error where a user doesn't have
+            # enough Dropbox space quota to upload this file
+            if (err.error.is_path() and
+                    err.error.get_path().reason.is_insufficient_space()):
+                sys.exit("ERROR: Cannot upload to dropbox; insufficient space.")
+            elif err.user_message_text:
+                print(err.user_message_text)
+                sys.exit()
+            else:
+                print(err)
+                sys.exit()
 
 
 # Function: Remove Photos from Pi
@@ -180,6 +213,10 @@ while True:
         # Optional: Upload to Server
         if (uploadToServer):
             serverUpload(currentTime)
+
+        # Optional: Upload to Dropbox
+        if (uploadToDropbox and createTile):
+            dropboxUpload(currentTime)
 
         # Optional: Remove Photos from Pi
         if (removePhotosFromPi):
